@@ -3,6 +3,7 @@
 #----------------------------------------------------------------------------#
 
 import json
+from sre_parse import State
 import sys
 import dateutil.parser
 import babel
@@ -325,21 +326,54 @@ def edit_venue_submission(venue_id):
 
 @app.route('/artists/create', methods=['GET'])
 def create_artist_form():
-  form = ArtistForm()
+  form = ArtistForm(request.form, meta={'csrf': False})
   return render_template('forms/new_artist.html', form=form)
 
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
   # called upon submitting the new artist listing form
-  # TODO: insert form data as a new Venue record in the db, instead
-  # TODO: modify data to be the data object returned from db insertion
 
-  # on successful db insert, flash success
-  flash('Artist ' + request.form['name'] + ' was successfully listed!')
-  # TODO: on unsuccessful db insert, flash an error instead.
-  # e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
-  return render_template('pages/home.html')
+  # track insertion errors
+  insertion_error = False
 
+  # perform form validation
+  form = ArtistForm(request.form, meta={'csrf': False})
+  if not form.validate():
+    # if errors are found, flash error
+    flash(form.errors)
+  else:
+    # if form is validated, proceed. 
+    print('no errors found on the page')
+    try:
+      artist_name = request.form.get("name")
+      artist_city = request.form.get("city")
+      artist_state = request.form.get("state")
+      artist_phone = request.form.get("phone")
+      artist_genres = request.form.getlist("genres")
+      artist_website = request.form.get("website_link")
+      artist_facebook_link = request.form.get("facebook_link")
+      artist_seeking_venue = True if request.form.get("seeking_venue") == 'y' else False
+      artist_seeking_description = request.form.get("seeking_description")
+      artist_image_link = request.form.get("image_link")
+
+      # insert form data as a new Artist record in the db
+      new_artist = Artist(name=artist_name, city=artist_city, state=artist_state, phone=artist_phone, genres=artist_genres, website=artist_website, facebook_link=artist_facebook_link, seeking_venue=artist_seeking_venue, seeking_description=artist_seeking_description, image_link=artist_image_link)
+      db.session.add(new_artist)
+      db.session.commit()
+    except:
+      print(sys.exc_info())
+      insertion_error = True
+      db.session.rollback()
+    finally:
+      db.session.close()
+    
+    if not insertion_error:
+      # on successful db insert, flash success
+      flash('Artist ' + request.form['name'] + ' was successfully listed!')
+      return render_template('pages/home.html')
+    else:
+      # on unsuccessful db insert, flash an error instead.
+      flash('An error occurred. Artist ' + artist_name + ' could not be listed.')
 
 #  Shows
 #  ----------------------------------------------------------------
@@ -350,6 +384,7 @@ def shows():
 
     # Define list to store show information
     data = list()
+
     # Query all shows
     shows = Show.query.all()
     # Loop through each show in shows query result to obtain details
@@ -370,14 +405,12 @@ def shows():
 
 @app.route('/shows/create')
 def create_shows():
-  # renders form. do not touch.
   form = ShowForm()
   return render_template('forms/new_show.html', form=form)
 
 @app.route('/shows/create', methods=['POST'])
 def create_show_submission():
     # called to create new shows in the db, upon submitting new show listing form
-
     try:
         artist_id = request.form.get("artist_id")
         venue_id = request.form.get("venue_id")
