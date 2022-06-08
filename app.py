@@ -157,13 +157,34 @@ def search_venues():
 def show_venue(venue_id):
     # Display the venue page with the given venue_id
     venue = Venue.query.get(venue_id)
+
+    # init variables to track show data
     past_shows = []
     upcoming_shows = []
-    past_shows_count = 1
-    upcoming_shows_count = 4
+    past_shows_count = 0
+    upcoming_shows_count = 0
+    current_time = datetime.now()
 
-    # TODO: Pull accurate count of past and upcoming shows.
+    # check if current venue has/had shows based on current time + date
+    for show in venue.shows:
+      if show.start_time > current_time:
+        upcoming_shows_count += 1
+        upcoming_shows.append({
+        "artist_id": show.artist_id, # ref parent obj
+        "artist_name": show.artist.name, # ref parent obj
+        "artist_image_link": show.artist.image_link, # ref parent obj
+        "start_time": format_datetime(str(show.start_time))
+        })
+      if show.start_time < current_time:
+        past_shows_count += 1
+        past_shows.append({
+        "artist_id": show.artist_id, # ref parent obj
+        "artist_name": show.artist.name, # ref parent obj
+        "artist_image_link": show.artist.image_link, # ref parent obj
+        "start_time": format_datetime(str(show.start_time))
+        })
 
+    # gather venue details
     current_venue_data = {
         "id": venue.id,
         "name": venue.name,
@@ -177,6 +198,7 @@ def show_venue(venue_id):
         "seeking_talent": venue.seeking_talent,
         "seeking_description": venue.seeking_description,
         "image_link": venue.image_link,
+        # Append show details to data list
         "past_shows": past_shows,
         "upcoming_shows": upcoming_shows,
         "upcoming_shows_count": upcoming_shows_count,
