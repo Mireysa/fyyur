@@ -99,7 +99,6 @@ def index():
 
 @app.route('/venues')
 def venues():
-    # num_shows should be aggregated based on number of upcoming shows per venue.
     # Querying the database for all venues
     venue_locations = db.session.query(
         Venue.city, Venue.state).group_by(Venue.city, Venue.state).all()
@@ -165,7 +164,7 @@ def show_venue(venue_id):
 
     # TODO: Pull accurate count of past and upcoming shows.
 
-    data = {
+    current_venue_data = {
         "id": venue.id,
         "name": venue.name,
         "genres": venue.genres,
@@ -184,7 +183,7 @@ def show_venue(venue_id):
         "past_shows_count": past_shows_count
     }
 
-    return render_template('pages/show_venue.html', venue=data)
+    return render_template('pages/show_venue.html', venue=current_venue_data)
 
 #  Create Venue
 #  ----------------------------------------------------------------
@@ -277,31 +276,53 @@ def show_artist(artist_id):
     # Display the artist page with the given artist_id
     artist = Artist.query.get(artist_id)
 
-    # TODO: add logic to pull show data
+    # init variables to track show data
     past_shows = []
     upcoming_shows = []
-    past_shows_count = 1
-    upcoming_shows_count = 4
+    past_shows_count = 0
+    upcoming_shows_count = 0
+    current_time = datetime.now()
 
-    data = {
+    # check if current artist has/had shows based on current time + date
+    for show in artist.shows:
+      if show.start_time > current_time:
+        upcoming_shows_count += 1
+        upcoming_shows.append({
+        "venue_id": show.venue_id, # ref parent obj
+        "venue_name": show.venue.name, # ref parent obj
+        "venue_image_link": show.venue.image_link, # ref parent obj
+        "start_time": format_datetime(str(show.start_time))
+        })
+      if show.start_time < current_time:
+        past_shows_count += 1
+        past_shows.append({
+        "venue_id": show.venue_id, # ref parent obj
+        "venue_name": show.venue.name, # ref parent obj
+        "venue_image_link": show.venue.image_link, # ref parent obj
+        "start_time": format_datetime(str(show.start_time))
+        })
+
+    # gather artist details
+    current_artist_data = {
         "id": artist.id,
         "name": artist.name,
         "genres": artist.genres,
         "city": artist.city,
         "state": artist.state,
         "phone": artist.phone,
-        "seeking_venue": False,
+        "seeking_venue": artist.seeking_venue,
         "seeking_description": artist.seeking_description,
         "image_link": artist.image_link,
         "facebook_link": artist.facebook_link,
         "website_link": artist.website,
+        # Append show details to data list
         "past_shows": past_shows,
         "upcoming_shows": upcoming_shows,
         "upcoming_shows_count": upcoming_shows_count,
         "past_shows_count": past_shows_count
     }
 
-    return render_template('pages/show_artist.html', artist=data)
+    return render_template('pages/show_artist.html', artist=current_artist_data)
 
 #  Update
 #  ----------------------------------------------------------------
