@@ -414,11 +414,8 @@ def create_artist_submission():
 
 @app.route('/shows')
 def shows():
-    # Displays list of shows
-
     # Define list to store show information
     data = list()
-
     # Query all shows
     shows = Show.query.all()
     # Loop through each show in shows query result to obtain details
@@ -444,30 +441,38 @@ def create_shows():
 
 @app.route('/shows/create', methods=['POST'])
 def create_show_submission():
-    # called to create new shows in the db, upon submitting new show listing form
-    try:
-        artist_id = request.form.get("artist_id")
-        venue_id = request.form.get("venue_id")
-        start_time = request.form.get("start_time")
+    # track insertion errors
+    insertion_error = False
 
-        # TODO: ensure we check if artist and venue id match to existing records.
+    # obtain form entry
+    artist_id = request.form.get("artist_id")
+    venue_id = request.form.get("venue_id")
+    start_time = request.form.get("start_time")
 
-        new_show = Show(artist_id=artist_id, venue_id=venue_id,
-                        start_time=start_time)
-        db.session.add(new_show)
-        db.session.commit()
+    # ensure artist and venue id match to existing records
+    artist_exists = db.session.query(db.exists().where(Artist.id == artist_id)).scalar()
+    venue_exists = db.session.query(db.exists().where(Venue.id == venue_id)).scalar()
 
-    except:
-        print(sys.exc_info())
-        db.session.rollback()
-        db.session.close()
+    if artist_exists & venue_exists:
+      try:
+          new_show = Show(artist_id=artist_id, venue_id=venue_id, start_time=start_time)
+          db.session.add(new_show)
+          db.session.commit()
+      except:
+          print(sys.exc_info())
+          insertion_error = True
+          db.session.rollback()
+      finally:
+          db.session.close()
+    else: 
+      insertion_error = True
 
-    # on successful db insert, flash success
-    flash('Show was successfully listed!')
-    # TODO: on unsuccessful db insert, flash an error instead.
-    # e.g., flash('An error occurred. Show could not be listed.')
-    # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-    return render_template('pages/home.html')
+    if not insertion_error:
+      flash('Show was successfully listed!')
+      return render_template('pages/home.html')
+    else:
+      flash('An error occurred. Show could not be listed.')
+      return render_template('pages/home.html')
 
 @app.errorhandler(404)
 def not_found_error(error):
