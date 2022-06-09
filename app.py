@@ -400,8 +400,50 @@ def edit_artist(artist_id):
 
 @app.route('/artists/<int:artist_id>/edit', methods=['POST'])
 def edit_artist_submission(artist_id):
-  # TODO: take values from the form submitted, and update existing
-  # artist record with ID <artist_id> using the new attributes
+  # take values from the form submitted, and update existing
+  
+  # track insertion errors
+  insertion_error = False
+
+  # perform form validation
+  form = ArtistForm(request.form, meta={'csrf': False})
+  if not form.validate():
+    # if errors are found, flash error
+    flash(form.errors)
+  else:
+    # if form is validated, proceed. 
+    print('no errors found on artist editing page')
+    try:
+      # obtain artist
+      artist = Artist.query.filter_by(id=artist_id).first()
+
+      # update details
+      artist.name = request.form.get("name")
+      artist.city = request.form.get("city")
+      artist.state = request.form.get("state")
+      artist.phone = request.form.get("phone")
+      artist.genres = request.form.getlist("genres")
+      artist.website = request.form.get("website_link")
+      artist.facebook_link = request.form.get("facebook_link")
+      artist.seeking_venue = True if request.form.get("seeking_venue") == 'y' else False
+      artist.seeking_description = request.form.get("seeking_description")
+      artist.image_link = request.form.get("image_link")
+
+      # commit changes
+      db.session.commit()
+    except:
+      insertion_error = True
+      db.session.rollback()
+    finally:
+      db.session.close()
+
+    if not insertion_error:
+      # on successful db insert, flash success
+      flash('Artist ' + request.form['name'] + ' was successfully updated!')
+      return render_template('pages/home.html')
+    else:
+      # on unsuccessful db insert, flash an error instead.
+      flash('An error occurred. Artist ' + artist.name + ' could not be updated.')
 
   return redirect(url_for('show_artist', artist_id=artist_id))
 
@@ -441,8 +483,52 @@ def edit_venue(venue_id):
 
 @app.route('/venues/<int:venue_id>/edit', methods=['POST'])
 def edit_venue_submission(venue_id):
-  # TODO: take values from the form submitted, and update existing
-  # venue record with ID <venue_id> using the new attributes
+  # take values from the form submitted, and update existing
+ 
+  # track insertion errors
+  insertion_error = False
+
+  # perform form validation
+  form = VenueForm(request.form, meta={'csrf': False})
+  if not form.validate():
+    # if errors are found, flash error
+    flash(form.errors)
+  else:
+    # if form is validated, proceed. 
+    print('no errors found on venue editing page')
+    try:
+      # obtain venue
+      venue = Venue.query.filter_by(id=venue_id).first()
+      # update details
+      venue.name = request.form.get("name")
+      venue.city = request.form.get("city")
+      venue.state = request.form.get("state")
+      venue.phone = request.form.get("phone")
+      venue.genres = request.form.getlist("genres")
+      venue.website = request.form.get("website_link")
+      venue.facebook_link = request.form.get("facebook_link")
+      venue.seeking_talent = True if request.form.get("seeking_talent") == 'y' else False
+      venue.seeking_description = request.form.get("seeking_description")
+      venue.image_link = request.form.get("image_link")
+
+      # commit changes
+      db.session.commit()
+    except:
+      insertion_error = True
+      db.session.rollback()
+    finally:
+      db.session.close()
+
+    if not insertion_error:
+      # on successful db insert, flash success
+      flash('Venue ' + request.form['name'] + ' was successfully updated!')
+      return render_template('pages/home.html')
+    else:
+      # on unsuccessful db insert, flash an error instead.
+      flash('An error occurred. Venue ' + venue.name + ' could not be updated.')
+
+
+
   return redirect(url_for('show_venue', venue_id=venue_id))
 
 #  Create Artist
