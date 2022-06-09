@@ -5,6 +5,7 @@
 import json
 from sre_parse import State
 import sys
+from tkinter import CASCADE
 import dateutil.parser
 import babel
 from flask import Flask, render_template, request, Response, flash, redirect, url_for
@@ -45,7 +46,7 @@ class Venue(db.Model):
     seeking_talent = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(500))
     image_link = db.Column(db.String(500))
-    shows = db.relationship('Show', backref="venue", lazy=True)
+    shows = db.relationship('Show', backref="venue", lazy=True, cascade='all, delete')
 
 class Artist(db.Model):
     __tablename__ = 'artist'
@@ -61,15 +62,14 @@ class Artist(db.Model):
     seeking_venue = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(500))
     image_link = db.Column(db.String(500))
-    shows = db.relationship('Show', backref="artist", lazy=True)
+    shows = db.relationship('Show', backref="artist", lazy=True, cascade='all, delete')
 
 class Show(db.Model):
     __tablename__ = 'show'
 
     id = db.Column(db.Integer, primary_key=True)
-    artist_id = db.Column(db.Integer, db.ForeignKey(
-        'artist.id'), nullable=False)
-    venue_id = db.Column(db.Integer, db.ForeignKey('venue.id'), nullable=False)
+    artist_id = db.Column(db.Integer, db.ForeignKey('artist.id', ondelete='cascade'), nullable=False)
+    venue_id = db.Column(db.Integer, db.ForeignKey('venue.id', ondelete='cascade'), nullable=False)
     start_time = db.Column(db.DateTime, nullable=False)
 #----------------------------------------------------------------------------#
 # Filters.
