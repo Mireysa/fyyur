@@ -349,6 +349,20 @@ def show_artist(artist_id):
 
     return render_template('pages/show_artist.html', artist=current_artist_data)
 
+#  DELETE
+#  ----------------------------------------------------------------
+@app.route('/artists/<artist_id>', methods=['DELETE'])
+def delete_artist(artist_id):
+  print('this is the artist id: ' + artist_id)
+  current_artist = Artist.query.filter(Artist.id == artist_id).one()
+  try:
+    db.session.delete(current_artist)
+    db.session.commit()
+  except:
+    db.session.rollback()
+  finally:
+    db.session.close()
+
 #  Update
 #  ----------------------------------------------------------------
 @app.route('/artists/<int:artist_id>/edit', methods=['GET'])
