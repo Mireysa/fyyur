@@ -527,8 +527,6 @@ def edit_venue_submission(venue_id):
       # on unsuccessful db insert, flash an error instead.
       flash('An error occurred. Venue ' + venue.name + ' could not be updated.')
 
-
-
   return redirect(url_for('show_venue', venue_id=venue_id))
 
 #  Create Artist
