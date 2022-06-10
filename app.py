@@ -461,42 +461,37 @@ def create_artist_submission():
 
   # perform form validation
   form = ArtistForm(request.form, meta={'csrf': False})
-  if not form.validate():
-    # if errors are found, flash error
-    flash(form.errors)
-  else:
-    # if form is validated, proceed. 
-    print('no errors found on artist creation page')
-    try:
-      artist_name = request.form.get("name")
-      artist_city = request.form.get("city")
-      artist_state = request.form.get("state")
-      artist_phone = request.form.get("phone")
-      artist_genres = request.form.getlist("genres")
-      artist_website = request.form.get("website_link")
-      artist_facebook_link = request.form.get("facebook_link")
-      artist_seeking_venue = True if request.form.get("seeking_venue") == 'y' else False
-      artist_seeking_description = request.form.get("seeking_description")
-      artist_image_link = request.form.get("image_link")
+  try:
+    artist = Artist(
+      name=form.name.data,
+      city=form.city.data,
+      state=form.state.data,
+      phone=form.phone.data,
+      genres=form.genres.data,
+      facebook_link=form.facebook_link.data,
+      image_link=form.image_link.data,
+      website=form.website_link.data,
+      seeking_venue=form.seeking_venue.data,
+      seeking_description=form.seeking_description.data
+    )
 
-      # insert form data as a new Artist record in the db
-      new_artist = Artist(name=artist_name, city=artist_city, state=artist_state, phone=artist_phone, genres=artist_genres, website=artist_website, facebook_link=artist_facebook_link, seeking_venue=artist_seeking_venue, seeking_description=artist_seeking_description, image_link=artist_image_link)
-      db.session.add(new_artist)
-      db.session.commit()
-    except:
-      print(sys.exc_info())
-      insertion_error = True
-      db.session.rollback()
-    finally:
-      db.session.close()
+    # insert form data as a new Artist record in the db
+    db.session.add(artist)
+    db.session.commit()
+  except:
+    print(sys.exc_info())
+    insertion_error = True
+    db.session.rollback()
+  finally:
+    db.session.close()
     
-    if not insertion_error:
-      # on successful db insert, flash success
-      flash('Artist ' + request.form['name'] + ' was successfully listed!')
-      return render_template('pages/home.html')
-    else:
-      # on unsuccessful db insert, flash an error instead.
-      flash('An error occurred. Artist ' + artist_name + ' could not be listed.')
+  if not insertion_error:
+    # on successful db insert, flash success
+    flash('Artist ' + request.form['name'] + ' was successfully listed!')
+    return render_template('pages/home.html')
+  else:
+    # on unsuccessful db insert, flash an error instead.
+    flash('An error occurred. Artist could not be listed.')
 
 #  Shows
 #  ----------------------------------------------------------------
