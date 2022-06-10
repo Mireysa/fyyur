@@ -8,7 +8,14 @@ import sys
 from tkinter import CASCADE
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import (
+  Flask, 
+  render_template, 
+  request, 
+  Response, 
+  flash, 
+  redirect, 
+  url_for)
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -16,6 +23,9 @@ from logging import Formatter, FileHandler
 from flask_wtf import Form
 from flask_migrate import Migrate
 from forms import *
+from models import db, Venue, Artist, Show
+from datetime import datetime
+
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -23,54 +33,10 @@ from forms import *
 app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
-db = SQLAlchemy(app)
+moment = Moment(app)
+db.init_app(app)
 migrate = Migrate(app, db)
 
-
-#----------------------------------------------------------------------------#
-# Models.
-#----------------------------------------------------------------------------#
-
-class Venue(db.Model):
-    __tablename__ = 'venue'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    genres = db.Column(db.ARRAY(db.String))
-    address = db.Column(db.String(120))
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    website = db.Column(db.String(120))
-    facebook_link = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean)
-    seeking_description = db.Column(db.String(500))
-    image_link = db.Column(db.String(500))
-    shows = db.relationship('Show', backref="venue", lazy=True, cascade='all, delete')
-
-class Artist(db.Model):
-    __tablename__ = 'artist'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    genres = db.Column(db.ARRAY(db.String))
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    website = db.Column(db.String(120))
-    facebook_link = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean)
-    seeking_description = db.Column(db.String(500))
-    image_link = db.Column(db.String(500))
-    shows = db.relationship('Show', backref="artist", lazy=True, cascade='all, delete')
-
-class Show(db.Model):
-    __tablename__ = 'show'
-
-    id = db.Column(db.Integer, primary_key=True)
-    artist_id = db.Column(db.Integer, db.ForeignKey('artist.id', ondelete='cascade'), nullable=False)
-    venue_id = db.Column(db.Integer, db.ForeignKey('venue.id', ondelete='cascade'), nullable=False)
-    start_time = db.Column(db.DateTime, nullable=False)
 #----------------------------------------------------------------------------#
 # Filters.
 #----------------------------------------------------------------------------#
@@ -155,56 +121,33 @@ def search_venues():
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
     # Display the venue page with the given venue_id
-    venue = Venue.query.get(venue_id)
+    venue = Venue.query.get_or_404(venue_id)
 
     # init variables to track show data
     past_shows = []
     upcoming_shows = []
-    past_shows_count = 0
-    upcoming_shows_count = 0
-    current_time = datetime.now()
-
+    
     # check if current venue has/had shows based on current time + date
     for show in venue.shows:
-      if show.start_time > current_time:
-        upcoming_shows_count += 1
-        upcoming_shows.append({
-        "artist_id": show.artist_id, # ref parent obj
-        "artist_name": show.artist.name, # ref parent obj
-        "artist_image_link": show.artist.image_link, # ref parent obj
-        "start_time": format_datetime(str(show.start_time))
-        })
-      if show.start_time < current_time:
-        past_shows_count += 1
-        past_shows.append({
-        "artist_id": show.artist_id, # ref parent obj
-        "artist_name": show.artist.name, # ref parent obj
-        "artist_image_link": show.artist.image_link, # ref parent obj
-        "start_time": format_datetime(str(show.start_time))
-        })
+        temp_show = {
+            'artist_id': show.artist_id,
+            'artist_name': show.artist.name,
+            'artist_image_link': show.artist.image_link,
+            'start_time': show.start_time.strftime("%m/%d/%Y, %H:%M")
+        }
+        if show.start_time <= datetime.now():
+            past_shows.append(temp_show)
+        else:
+            upcoming_shows.append(temp_show)
 
-    # gather venue details
-    current_venue_data = {
-        "id": venue.id,
-        "name": venue.name,
-        "genres": venue.genres,
-        "address": venue.address,
-        "city": venue.city,
-        "state": venue.state,
-        "phone": venue.phone,
-        "website": venue.website,
-        "facebook_link": venue.facebook_link,
-        "seeking_talent": venue.seeking_talent,
-        "seeking_description": venue.seeking_description,
-        "image_link": venue.image_link,
-        # Append show details to data list
-        "past_shows": past_shows,
-        "upcoming_shows": upcoming_shows,
-        "upcoming_shows_count": upcoming_shows_count,
-        "past_shows_count": past_shows_count
-    }
+    # object class to dict
+    venue_data = vars(venue)
+    venue_data['past_shows'] = past_shows
+    venue_data['upcoming_shows'] = upcoming_shows
+    venue_data['past_shows_count'] = len(past_shows)
+    venue_data['upcoming_shows_count'] = len(upcoming_shows)
 
-    return render_template('pages/show_venue.html', venue=current_venue_data)
+    return render_template('pages/show_venue.html', venue=venue_data)
 
 #  Create Venue
 #  ----------------------------------------------------------------
@@ -297,55 +240,33 @@ def search_artists():
 @app.route('/artists/<int:artist_id>')
 def show_artist(artist_id):
     # Display the artist page with the given artist_id
-    artist = Artist.query.get(artist_id)
+    artist = Artist.query.get_or_404(artist_id)
 
     # init variables to track show data
     past_shows = []
     upcoming_shows = []
-    past_shows_count = 0
-    upcoming_shows_count = 0
-    current_time = datetime.now()
 
     # check if current artist has/had shows based on current time + date
     for show in artist.shows:
-      if show.start_time > current_time:
-        upcoming_shows_count += 1
-        upcoming_shows.append({
-        "venue_id": show.venue_id, # ref parent obj
-        "venue_name": show.venue.name, # ref parent obj
-        "venue_image_link": show.venue.image_link, # ref parent obj
-        "start_time": format_datetime(str(show.start_time))
-        })
-      if show.start_time < current_time:
-        past_shows_count += 1
-        past_shows.append({
-        "venue_id": show.venue_id, # ref parent obj
-        "venue_name": show.venue.name, # ref parent obj
-        "venue_image_link": show.venue.image_link, # ref parent obj
-        "start_time": format_datetime(str(show.start_time))
-        })
+        temp_show = {
+            'venue_id': show.venue_id,
+            'venue_name': show.venue.name,
+            'venue_image_link': show.venue.image_link,
+            'start_time': show.start_time.strftime("%m/%d/%Y, %H:%M")
+        }
+        if show.start_time <= datetime.now():
+            past_shows.append(temp_show)
+        else:
+            upcoming_shows.append(temp_show)
 
-    # gather artist details
-    current_artist_data = {
-        "id": artist.id,
-        "name": artist.name,
-        "genres": artist.genres,
-        "city": artist.city,
-        "state": artist.state,
-        "phone": artist.phone,
-        "seeking_venue": artist.seeking_venue,
-        "seeking_description": artist.seeking_description,
-        "image_link": artist.image_link,
-        "facebook_link": artist.facebook_link,
-        "website_link": artist.website,
-        # Append show details to data list
-        "past_shows": past_shows,
-        "upcoming_shows": upcoming_shows,
-        "upcoming_shows_count": upcoming_shows_count,
-        "past_shows_count": past_shows_count
-    }
+    # object class to dict
+    artist_data = vars(artist)
+    artist_data['past_shows'] = past_shows
+    artist_data['upcoming_shows'] = upcoming_shows
+    artist_data['past_shows_count'] = len(past_shows)
+    artist_data['upcoming_shows_count'] = len(upcoming_shows)
 
-    return render_template('pages/show_artist.html', artist=current_artist_data)
+    return render_template('pages/show_artist.html', artist=artist_data)
 
 #  DELETE
 #  ----------------------------------------------------------------
