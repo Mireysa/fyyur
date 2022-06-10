@@ -528,28 +528,21 @@ def create_show_submission():
     # track insertion errors
     insertion_error = False
 
-    # obtain form entry
-    artist_id = request.form.get("artist_id")
-    venue_id = request.form.get("venue_id")
-    start_time = request.form.get("start_time")
-
-    # ensure artist and venue id match to existing records
-    artist_exists = db.session.query(db.exists().where(Artist.id == artist_id)).scalar()
-    venue_exists = db.session.query(db.exists().where(Venue.id == venue_id)).scalar()
-
-    if artist_exists & venue_exists:
-      try:
-          new_show = Show(artist_id=artist_id, venue_id=venue_id, start_time=start_time)
-          db.session.add(new_show)
-          db.session.commit()
-      except:
-          print(sys.exc_info())
-          insertion_error = True
-          db.session.rollback()
-      finally:
-          db.session.close()
-    else: 
+    form = ShowForm(request.form, meta={'csrf': False})
+    try:
+      show = Show(
+        artist_id = form.artist_id.data,
+        venue_id = form.venue_id.data,
+        start_time = form.start_time.data
+      )
+      db.session.add(show)
+      db.session.commit()
+    except:
+      print(sys.exc_info())
       insertion_error = True
+      db.session.rollback()
+    finally:
+      db.session.close()
 
     if not insertion_error:
       flash('Show was successfully listed!')
