@@ -2,6 +2,7 @@
 # Imports
 #----------------------------------------------------------------------------#
 
+from dataclasses import dataclass
 import json
 from sre_parse import State
 import sys
@@ -164,35 +165,30 @@ def create_venue_submission():
 
   # perform form validation
   form = VenueForm(request.form, meta={'csrf': False})
-  if not form.validate():
-    # if errors are found, flash error
-    flash(form.errors)
-  else:
-    # if form is validated, proceed.
-    print('no errors found on venue creation page')
-    try:
-      venue_name = request.form.get("name")
-      venue_city = request.form.get("city")
-      venue_state = request.form.get("state")
-      venue_address = request.form.get("address")
-      venue_phone = request.form.get("phone")
-      venue_genres = request.form.getlist("genres")
-      venue_website = request.form.get("website_link")
-      venue_facebook_link = request.form.get("facebook_link")
-      venue_seeking_talent = True if request.form.get("seeking_talent") == 'y' else False
-      venue_seeking_description = request.form.get("seeking_description")
-      venue_image_link = request.form.get("image_link")
+  try:
+    venue = Venue(
+      name=form.name.data,
+      city=form.city.data,
+      state=form.state.data,
+      address=form.address.data,
+      phone=form.phone.data,
+      genres=form.genres.data,
+      facebook_link=form.facebook_link.data,
+      image_link=form.image_link.data,
+      website=form.website_link.data,
+      seeking_talent=form.seeking_talent.data,
+      seeking_description=form.seeking_description.data
+    )
 
-      # insert form data as a new Venue record in the db
-      new_venue = Venue(name=venue_name, genres=venue_genres, address=venue_address, city=venue_city, state=venue_state, phone=venue_phone, website=venue_website, facebook_link=venue_facebook_link, seeking_talent=venue_seeking_talent, seeking_description=venue_seeking_description, image_link=venue_image_link)
-      db.session.add(new_venue)
-      db.session.commit()
-    except:
-      print(sys.exc_info())
-      insertion_error = True
-      db.session.rollback()
-    finally:
-      db.session.close()
+    # insert validated form data as a new Venue record in the db
+    db.session.add(venue)
+    db.session.commit()
+  except:
+    print(sys.exc_info())
+    insertion_error = True
+    db.session.rollback()
+  finally:
+    db.session.close()
 
   if not insertion_error:
     # on successful db insert, flash success
@@ -200,7 +196,7 @@ def create_venue_submission():
     return render_template('pages/home.html')
   else:
     # on unsuccessful db insert, flash an error instead.
-    flash('An error occurred. Venue ' + venue_name + ' could not be listed.')
+    flash('An error occurred. Venue ' + venue.name + ' could not be listed.')
   
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
